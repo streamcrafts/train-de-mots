@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Le Train de Mots de Lukas</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F0F6FF;font-family:'Nunito',sans-serif;min-height:100vh;display:flex;justify-content:center}
+#app{width:100%;max-width:600px;min-height:100vh;padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:18px}
+#game{width:100%;display:flex;flex-direction:column;align-items:center;gap:18px}
+#end{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:20px}
+.score-bar{width:100%;display:flex;justify-content:space-between;align-items:center}
+.score-pill{background:#2979FF;color:white;font-size:18px;font-weight:800;padding:10px 22px;border-radius:30px}
+.progress-dots{display:flex;gap:10px}
+.dot{width:18px;height:18px;border-radius:50%;background:#BBDEFB;transition:background 0.3s}
+.dot.done{background:#1565C0}.dot.current{background:#2979FF}
+.train-display{width:100%;background:white;border-radius:20px;border:2.5px solid #90CAF9;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:80px}
+.wagons{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
+.wagon{background:#2979FF;color:white;font-size:26px;font-weight:800;padding:10px 18px;border-radius:12px;box-shadow:0 4px 0 #1565C0;animation:pop .25s ease}
+.wagon.done{background:#1565C0;box-shadow:0 4px 0 #0D47A1}
+.wagon.active{background:#00B0FF;box-shadow:0 4px 0 #0081CB}
+.plus{font-size:22px;color:#64B5F6;font-weight:800}
+.word-text{font-size:36px;font-weight:800;color:#1565C0;letter-spacing:2px;min-height:44px;text-align:center}
+.word-text .a{color:#00B0FF}
+@keyframes pop{0%{transform:scale(0.4);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.hint{width:100%;text-align:center;font-size:18px;color:#90CAF9;min-height:28px;font-weight:700}
+.hint.ok{color:#1565C0;font-size:21px}
+.hint.err{color:#E53935;animation:shake 0.4s}
+.grid{width:100%;display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.grid.single{grid-template-columns:1fr}
+.syl{background:white;border:3px solid #90CAF9;border-radius:16px;padding:22px 6px;font-size:32px;font-weight:800;color:#1565C0;cursor:pointer;transition:transform .1s,background .1s;box-shadow:0 5px 0 #64B5F6;letter-spacing:1px;text-align:center;-webkit-tap-highlight-color:transparent}
+.syl:hover{background:#E3F2FD;transform:translateY(-2px)}
+.syl:active{transform:translateY(3px);box-shadow:0 2px 0 #64B5F6}
+.syl.ok{background:#BBDEFB;border-color:#1565C0;color:#0D47A1;pointer-events:none}
+.syl.bad{background:#FFCDD2;border-color:#EF9A9A;color:#C62828;animation:shake 0.4s}
+.syl.gift{background:#E3F2FD;border-color:#2979FF;color:#1565C0;font-size:36px;padding:28px 6px}
+.next-btn{background:#1565C0;color:white;border:none;border-radius:20px;padding:16px 40px;font-size:24px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #0D47A1;display:none;animation:bounce 0.5s infinite;-webkit-tap-highlight-color:transparent}
+.next-btn.show{display:block}
+.replay-btn{background:#2979FF;color:white;border:none;border-radius:20px;padding:18px 40px;font-size:26px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #1565C0;-webkit-tap-highlight-color:transparent}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="game">
+    <div class="score-bar">
+      <div class="score-pill">&#9733; <span id="score">0</span> / 100</div>
+      <div class="progress-dots" id="dots"></div>
+    </div>
+    <div class="train-display">
+      <div class="wagons" id="wagons"></div>
+      <div class="word-text" id="wtext"></div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="grid" id="grid"></div>
+    <button class="next-btn" id="nxt">Suivant &#8594;</button>
+  </div>
+  <div id="end">
+    <div style="font-size:80px;margin-bottom:16px">&#127942;</div>
+    <div style="font-size:36px;font-weight:800;color:#1565C0;margin-bottom:12px">Bravo Lukas !</div>
+    <div style="font-size:22px;color:#888;margin-bottom:28px">Tu as eu <strong id="final-score" style="color:#2979FF">0</strong> points sur 100 !</div>
+    <button class="replay-btn" id="replay-btn">Rejouer !</button>
+  </div>
+</div>
+<script>
+const WORDS=[
+  {w:"VÉLO",   s:["VÉ","LO"],    d:["MA","PI","BO","TO"]},
+  {w:"BÉBÉ",   s:["BÉ","BÉ"],    d:["MA","PI","BO","TO"]},
+  {w:"MOTO",   s:["MO","TO"],     d:["PI","CA","LA","VE"]},
+  {w:"DODO",   s:["DO","DO"],     d:["MA","LA","BI","TA"]},
+  {w:"PAPA",   s:["PA","PA"],     d:["BI","TO","MA","SA"]},
+  {w:"MAMAN",  s:["MA","MAN"],    d:["PI","BI","TO","CA"]},
+  {w:"SOLEIL", s:["SO","LEIL"],   d:["MA","CA","PI","NU"]},
+  {w:"LAPIN",  s:["LA","PIN"],    d:["BO","MI","TO","SA"]},
+  {w:"FUSÉE",  s:["FU","SÉE"],    d:["MA","TO","PI","BO"]},
+  {w:"POMME",  s:["POM","ME"],    d:["LA","BO","TO","MI"]},
+  {w:"NUAGE",  s:["NU","AGE"],    d:["SO","MA","PI","CA"]},
+  {w:"BALLE",  s:["BAL","LE"],    d:["MA","TO","PI","BO"]},
+  {w:"BATEAU", s:["BA","TEAU"],   d:["MA","PI","SO","CA"]},
+  {w:"GÂTEAU", s:["GÂ","TEAU"],   d:["PI","SO","MA","BO"]},
+  {w:"MAISON", s:["MAI","SON"],   d:["CA","PI","BO","TA"]},
+  {w:"BALLON", s:["BAL","LON"],   d:["MA","PI","TA","BO"]},
+  {w:"CITRON", s:["CI","TRON"],   d:["MA","SO","PI","LA"]},
+  {w:"MOUTON", s:["MOU","TON"],   d:["LA","PI","BO","SA"]},
+  {w:"CRAYON", s:["CRA","YON"],   d:["MA","SO","PI","BO"]},
+  {w:"CAROTTE",s:["CA","ROTTE"],  d:["PI","NU","MA","BO"]},
+  {w:"CÂLIN",  s:["CÂ","LIN"],    d:["MA","PI","BO","TO"]},
+  {w:"TIGRE",  s:["TI","GRE"],    d:["MA","PI","BO","CA"]},
+  {w:"HIBOU",  s:["HI","BOU"],    d:["MA","PI","CA","TO"]},
+  {w:"MOUCHE", s:["MOU","CHE"],   d:["PI","LA","BO","TA"]},
+  {w:"BOUTON", s:["BOU","TON"],   d:["MA","PI","LA","CA"]},
+  {w:"CAMION", s:["CA","MION"],   d:["PI","BO","MA","LA"]},
+];
+
+let order=[],idx=0,score=0,cur=null,step=0;
+
+document.getElementById('nxt').onclick=function(){idx++;loadWord()};
+document.getElementById('replay-btn').onclick=function(){start()};
+
+function shuf(a){let b=[...a];for(let i=b.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+
+function start(){
+  order=shuf(WORDS).slice(0,5);idx=0;score=0;
+  document.getElementById('score').textContent=0;
+  document.getElementById('game').style.display='flex';
+  document.getElementById('end').style.display='none';
+  buildDots();loadWord();
+}
+
+function buildDots(){
+  const d=document.getElementById('dots');d.innerHTML='';
+  order.forEach((_,i)=>{const e=document.createElement('div');e.className='dot'+(i===0?' current':'');e.id='d'+i;d.appendChild(e)});
+}
+
+function updDots(){
+  order.forEach((_,i)=>{const e=document.getElementById('d'+i);if(!e)return;e.className='dot'+(i<idx?' done':i===idx?' current':'')});
+}
+
+function loadWord(){
+  if(idx>=order.length){showEnd();return}
+  cur=order[idx];step=0;updDots();
+  document.getElementById('wagons').innerHTML='';
+  document.getElementById('wtext').innerHTML='';
+  document.getElementById('nxt').className='next-btn';
+  showStep();
+}
+
+function showStep(){
+  const g=document.getElementById('grid');
+  const h=document.getElementById('hint');
+  g.innerHTML='';
+  if(step===0){
+    g.className='grid single';
+    h.className='hint';
+    h.textContent='Appuie sur la 1re syllabe !';
+    const b=document.createElement('button');
+    b.className='syl gift';
+    b.textContent=cur.s[0];
+    b.onclick=function(){
+      b.className='syl ok';b.onclick=null;
+      step=1;renderWagons();
+      if(cur.s.length===1){setTimeout(wordDone,400);}
+      else{h.textContent='Bien ! Maintenant la 2e syllabe !';setTimeout(showStep,500);}
+    };
+    g.appendChild(b);
+  } else {
+    g.className='grid';
+    h.className='hint';
+    h.textContent='Trouve la syllabe suivante !';
+    const correct=cur.s[step];
+    const decoys=shuf(cur.d.filter(d=>d!==correct)).slice(0,3);
+    shuf([correct,...decoys]).forEach(s=>{
+      const b=document.createElement('button');
+      b.className='syl';b.textContent=s;
+      b.onclick=function(){pickSyl(b,s)};
+      g.appendChild(b);
+    });
+  }
+}
+
+function pickSyl(btn,s){
+  const correct=cur.s[step];
+  const h=document.getElementById('hint');
+  if(s===correct){
+    btn.className='syl ok';
+    document.querySelectorAll('.syl').forEach(b=>b.onclick=null);
+    step++;renderWagons();
+    if(step===cur.s.length){setTimeout(wordDone,400);}
+    else{h.textContent='Encore une !';setTimeout(showStep,500);}
+  } else {
+    btn.className='syl bad';
+    h.textContent='Pas celle-là... essaie encore !';h.className='hint err';
+    setTimeout(()=>{btn.className='syl';btn.onclick=function(){pickSyl(btn,s)};h.className='hint';h.textContent='Trouve la syllabe suivante !';},650);
+  }
+}
+
+function renderWagons(){
+  const wc=document.getElementById('wagons');wc.innerHTML='';
+  const wt=document.getElementById('wtext');wt.innerHTML='';
+  cur.s.slice(0,step).forEach((s,i)=>{
+    if(i>0){const p=document.createElement('span');p.className='plus';p.textContent='+';wc.appendChild(p)}
+    const w=document.createElement('div');
+    w.className='wagon'+(i===step-1?' active':step===cur.s.length?' done':'');
+    w.textContent=s;wc.appendChild(w);
+    const sp=document.createElement('span');sp.className=i===step-1?'a':'';sp.textContent=s;wt.appendChild(sp);
+  });
+}
+
+function wordDone(){
+  score+=20;
+  document.getElementById('score').textContent=score;
+  document.querySelectorAll('.syl').forEach(b=>b.style.pointerEvents='none');
+  renderWagons();
+  document.getElementById('wtext').innerHTML='<span style="color:#1565C0">'+cur.w+'</span>';
+  document.getElementById('hint').textContent='Bravo ! C\'est : '+cur.w+' !';
+  document.getElementById('hint').className='hint ok';
+  document.getElementById('nxt').className='next-btn show';
+}
+
+function showEnd(){
+  document.getElementById('game').style.display='none';
+  document.getElementById('end').style.display='flex';
+  document.getElementById('final-score').textContent=score;
+}
+
+start();
+</script>
+</body>
+</html>
