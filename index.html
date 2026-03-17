@@ -9,6 +9,8 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#F0F6FF;font-family:'Nunito',sans-serif;min-height:100vh;display:flex;justify-content:center}
 #app{width:100%;max-width:600px;min-height:100vh;padding:24px 16px;display:flex;flex-direction:column;align-items:center;gap:18px}
+#game{width:100%;display:flex;flex-direction:column;align-items:center;gap:18px}
+#end{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:20px}
 .score-bar{width:100%;display:flex;justify-content:space-between;align-items:center}
 .score-pill{background:#2979FF;color:white;font-size:18px;font-weight:800;padding:10px 22px;border-radius:30px}
 .progress-dots{display:flex;gap:10px}
@@ -38,23 +40,31 @@ body{background:#F0F6FF;font-family:'Nunito',sans-serif;min-height:100vh;display
 .syl.gift{background:#E3F2FD;border-color:#2979FF;color:#1565C0;font-size:36px;padding:28px 6px}
 .next-btn{background:#1565C0;color:white;border:none;border-radius:20px;padding:16px 40px;font-size:24px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #0D47A1;display:none;animation:bounce 0.5s infinite;-webkit-tap-highlight-color:transparent}
 .next-btn.show{display:block}
+.replay-btn{background:#2979FF;color:white;border:none;border-radius:20px;padding:18px 40px;font-size:26px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #1565C0;-webkit-tap-highlight-color:transparent}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="score-bar">
-    <div class="score-pill">&#9733; <span id="score">0</span> / 100</div>
-    <div class="progress-dots" id="dots"></div>
+  <div id="game">
+    <div class="score-bar">
+      <div class="score-pill">&#9733; <span id="score">0</span> / 100</div>
+      <div class="progress-dots" id="dots"></div>
+    </div>
+    <div class="train-display">
+      <div class="wagons" id="wagons"></div>
+      <div class="word-text" id="wtext"></div>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="grid" id="grid"></div>
+    <button class="next-btn" id="nxt">Suivant &#8594;</button>
   </div>
-  <div class="train-display">
-    <div class="wagons" id="wagons"></div>
-    <div class="word-text" id="wtext"></div>
+  <div id="end">
+    <div style="font-size:80px;margin-bottom:16px">&#127942;</div>
+    <div style="font-size:36px;font-weight:800;color:#1565C0;margin-bottom:12px">Bravo Lukas !</div>
+    <div style="font-size:22px;color:#888;margin-bottom:28px">Tu as eu <strong id="final-score" style="color:#2979FF">0</strong> points sur 100 !</div>
+    <button class="replay-btn" id="replay-btn">Rejouer !</button>
   </div>
-  <div class="hint" id="hint"></div>
-  <div class="grid" id="grid"></div>
-  <button class="next-btn" id="nxt" onclick="nextWord()">Suivant &#8594;</button>
 </div>
-
 <script>
 const WORDS=[
   {w:"VÉLO",   s:["VÉ","LO"],    d:["MA","PI","BO","TO"]},
@@ -87,11 +97,16 @@ const WORDS=[
 
 let order=[],idx=0,score=0,cur=null,step=0;
 
+document.getElementById('nxt').onclick=function(){idx++;loadWord()};
+document.getElementById('replay-btn').onclick=function(){start()};
+
 function shuf(a){let b=[...a];for(let i=b.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
 
 function start(){
   order=shuf(WORDS).slice(0,5);idx=0;score=0;
   document.getElementById('score').textContent=0;
+  document.getElementById('game').style.display='flex';
+  document.getElementById('end').style.display='none';
   buildDots();loadWord();
 }
 
@@ -185,15 +200,10 @@ function wordDone(){
   document.getElementById('nxt').className='next-btn show';
 }
 
-function nextWord(){idx++;loadWord()}
-
 function showEnd(){
-  document.getElementById('app').innerHTML=`<div style="text-align:center;padding:60px 16px">
-    <div style="font-size:80px;margin-bottom:16px">&#127942;</div>
-    <div style="font-size:36px;font-weight:800;color:#1565C0;margin-bottom:12px">Bravo Lukas !</div>
-    <div style="font-size:22px;color:#888;margin-bottom:28px">Tu as eu <strong style="color:#2979FF">${score}</strong> points sur 100 !</div>
-    <button onclick="start()" style="background:#2979FF;color:white;border:none;border-radius:20px;padding:16px 36px;font-size:24px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 #1565C0">Rejouer !</button>
-  </div>`;
+  document.getElementById('game').style.display='none';
+  document.getElementById('end').style.display='flex';
+  document.getElementById('final-score').textContent=score;
 }
 
 start();
